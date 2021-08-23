@@ -54,6 +54,16 @@ _global_script_classes=[ {
 "language": "GDScript",
 "path": "res://common/networking/ServerPacketManager.gd"
 }, {
+"base": "TestMover",
+"class": "TestGamer",
+"language": "GDScript",
+"path": "res://movement/TestGamer.gd"
+}, {
+"base": "KinematicBody",
+"class": "TestMover",
+"language": "GDScript",
+"path": "res://movement/TestMover.gd"
+}, {
 "base": "Timer",
 "class": "TimeQueue",
 "language": "GDScript",
@@ -69,17 +79,24 @@ _global_script_class_icons={
 "PacketSerializer": "",
 "PoolBuffer": "",
 "ServerPacketManager": "",
+"TestGamer": "",
+"TestMover": "",
 "TimeQueue": ""
 }
 
 [application]
 
 config/name="TF3D CLIENT"
+run/main_scene="res://common/networking/Network.tscn"
 config/icon="res://icon.png"
 
 [autoload]
 
 Network="*res://common/networking/Network.gd"
+
+[display]
+
+window/vsync/use_vsync=false
 
 [input]
 
@@ -126,10 +143,14 @@ alt_click={
 
 [physics]
 
+common/physics_fps=100
+common/physics_jitter_fix=0.0
 common/enable_pause_aware_picking=true
 3d/physics_engine="Bullet"
 3d/active_soft_world=false
 
 [rendering]
 
+quality/driver/driver_name="GLES2"
+quality/filters/msaa=2
 environment/default_environment="res://default_env.tres"
