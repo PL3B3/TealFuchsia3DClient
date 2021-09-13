@@ -165,9 +165,9 @@ var frames_since_cast = 0
 
 func handle_raycast():
 	if raycast_this_physics_frame:
-		velocity.y = 0
-		for i in range(20):
-			move_and_slide(20.0 * -camera.get_global_transform().basis.z, Vector3.UP, false, 2)
+#		velocity.y = 0
+#		for i in range(20):
+#			move_and_slide(20.0 * -camera.get_global_transform().basis.z, Vector3.UP, false, 2)
 #		var space_state = get_world().direct_space_state
 #		var target_transform = Transform(
 #			test_target.transform.basis, target_position)
@@ -183,8 +183,8 @@ func handle_raycast():
 		var hit_dist
 		for i in range(1):
 			hit_dist = Intersector.intersect_ray_sphere(
-				transform.origin, 
-				transform.origin + (40.0 * -camera.get_global_transform().basis.z),
+				camera.get_global_transform().origin, 
+				camera.get_global_transform().origin + (40.0 * -camera.get_global_transform().basis.z),
 				Network.sigma_position,
 				1)
 		if hit_dist == -1.0:
