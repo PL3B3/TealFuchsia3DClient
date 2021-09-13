@@ -33,7 +33,7 @@ var slow_recharge_ticks_left := 0 # set=recharge_rate on ability press
 
 
 # ----------------------------------------------------------------Input settings
-var mouse_sensitivity := 0.02
+var mouse_sensitivity := 0.05
 var jump_try_ticks_default := 3
 
 # --------------------------------------------------------------------Input vars
@@ -45,6 +45,7 @@ var state_buffer:PoolBuffer
 
 # ---------------------------------------------------------------Experiment Vars
 var raycast_this_physics_frame = false
+var target_start_position = Vector3(10.0, 50.0, 0.0)
 var target_position = Vector3(10.0, 5.0, -15.0)
 var fire_from_position = Vector3(10.0, 5.0, -25.0)
 var test_target:StaticBody
@@ -88,14 +89,17 @@ func setup_test_targets():
 			get_tree().get_root().call_deferred("add_child", target_to_shoot)
 	"""
 	test_target = target.instance()
-	test_target.transform.origin = Vector3()
+	test_target.transform.origin = target_start_position
 	get_tree().get_root().call_deferred("add_child", test_target)
 
 func _unhandled_input(event):
 	if event.is_action_pressed("click"):
-		test_target.transform.origin = target_position
-		test_target.force_update_transform()
+#		test_target.transform.origin = target_position
+#		test_target.force_update_transform()
 		raycast_this_physics_frame = true
+	
+	if event.is_action_pressed("signature_ability"):
+		pass
 		
 	if (event is InputEventMouseMotion 
 		&& Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED):
@@ -137,6 +141,8 @@ func _process(delta):
 		this_physics_tick_origin, Engine.get_physics_interpolation_fraction())
 
 func _physics_process(delta):
+	handle_raycast()
+	
 	record_move()
 
 	record_state()
@@ -146,22 +152,46 @@ func _physics_process(delta):
 	calculate_movement(delta)
 
 	apply_movement()
+	
+#	test_slide()
 
 	calculate_next_move()
 
 	calculate_next_state()
+	
+#	print("At %s during frame %d" % [transform.origin, Network.physics_tick_id])
 
 var frames_since_cast = 0
+
 func handle_raycast():
 	if raycast_this_physics_frame:
-		var space_state = get_world().direct_space_state
-		var result = space_state.intersect_ray(
-			fire_from_position, 
-			target_position)
-		print(frames_since_cast)
-		frames_since_cast += 1
-		if result and is_instance_valid(result.collider):
-			print(result.collider)
+		velocity.y = 0
+		for i in range(20):
+			move_and_slide(20.0 * -camera.get_global_transform().basis.z, Vector3.UP, false, 2)
+#		var space_state = get_world().direct_space_state
+#		var target_transform = Transform(
+#			test_target.transform.basis, target_position)
+#		var tts = PhysicsServer.body_get_direct_state(test_target.get_rid())
+#		tts.set_transform(target_transform)
+#		var result = space_state.intersect_ray(
+#			fire_from_position, 
+#			target_position)
+#		print(frames_since_cast)
+#		frames_since_cast += 1
+#		if result and is_instance_valid(result.collider):
+#			print(result.collider)
+		var hit_dist
+		for i in range(1):
+			hit_dist = Intersector.intersect_ray_sphere(
+				transform.origin, 
+				transform.origin + (40.0 * -camera.get_global_transform().basis.z),
+				Network.sigma_position,
+				1)
+		if hit_dist == -1.0:
+			print("missed aha")
+		else:
+			print("sigma destroyed")
+		raycast_this_physics_frame = false
 		# for i in range(targets.size()):
 		# 	var target_to_shoot = targets[i]
 		# 	target_to_shoot.transform.origin = Vector3(-10.0, 2.0, i * -4.0)
@@ -173,6 +203,21 @@ func handle_raycast():
 		# 		print(result.collider)
 		# 		#result.collider.queue_free()
 		# 	target_to_shoot.transform.origin = target_position
+
+func test_slide():
+#	print("Tested slide at frame %d" % Network.physics_tick_id)
+	
+#	transform.origin = Vector3(0.0, 5.0, 0.0)
+#	test_target.transform.origin = Vector3(10.0, 50.5, 0.0)
+#	print(is_on_floor())
+#	move_and_slide(Vector3(0.0, -100.0, 0.0), Vector3.UP)
+#	print(is_on_floor())
+#	move_and_slide(Vector3(0.0, -100.0, 0.0), Vector3.UP)
+#	print(is_on_floor())
+#	move_and_slide(Vector3(0.0, -100.0, 0.0), Vector3.UP)
+#	print(is_on_floor())
+	for i in range(20):
+		move_and_slide(pow(-1, i) * Vector3(20.0, -20.0, 0.0), Vector3.UP, false, 2)
 
 func record_move():
 	move_buffer.write(
@@ -241,7 +286,6 @@ func get_fast_charges_stored() -> int:
 		(fast_recharge_time * fast_max_charges) - 
 		state_slice[STATE.FAST_CHARGE_TIME_LEFT])
 	
-
 	return fast_charge_time_stored / fast_recharge_time
 
 func handle_networking():
