@@ -117,13 +117,11 @@ var floor_snap = Vector3()
 var pre_move_origin = Vector3()
 var floor_limit = 0.5
 var last_gravity_applied = Vector3()
-var n_delta_lim = 0.001
+var n_delta_lim = 0.000001
 func calculate_movement(delta:float):
 	"""
 		Todos
-		- Valley stuck
 		- Sticky edges on steps
-		- Small pop when falling off ledge
 	"""
 	pre_move_origin = transform.origin
 	var target_velocity = (
@@ -179,7 +177,8 @@ func calculate_movement(delta:float):
 #	print(is_on_floor())
 #	print(velocity)
 	if did_n_change(old_floor_normal, floor_normal):
-		velocity += 0.7 * speed * old_floor_normal
+		if old_floor_normal.dot(Vector3.UP) > 0.75:
+			velocity += 0.75 * speed * old_floor_normal
 #		print("floor normal changed @fr ", Network.physics_tick_id)
 
 #	print(get_floor_normal())
@@ -220,6 +219,8 @@ func calculate_movement(delta:float):
 
 func did_n_change(n_old:Vector3, n_new:Vector3):
 	return n_old.distance_squared_to(n_new) > n_delta_lim
+#	(not n_old.is_equal_approx(n_new)) and (not n_old.is_equal_approx(Vector3.UP))
+#	n_old.distance_squared_to(n_new) > n_delta_lim
 
 var h_vel := Vector3()
 var g_vel := Vector3()
@@ -317,7 +318,7 @@ func apply_movement():
 #			print("VEL: ", velocity, " RVEL: ", real_vel, " D: ", velocity.distance_squared_to(real_vel))
 #			print("bumping ", Network.physics_tick_id)
 #			print(real_vel)
-			velocity = velocity.linear_interpolate(real_vel, 0.7)
+			velocity = velocity.linear_interpolate(real_vel, 0.5)
 #		pre_move_origin = transform.origin
 #		print("pos-move vel: ", velocity)
 
