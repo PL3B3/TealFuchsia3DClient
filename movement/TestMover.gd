@@ -121,7 +121,8 @@ var n_delta_lim = 0.000001
 func calculate_movement(delta:float):
 	"""
 		Todos
-		- Sticky edges on steps
+		- Sticky edges
+		- Ramp bump
 	"""
 	pre_move_origin = transform.origin
 	var target_velocity = (
@@ -177,13 +178,15 @@ func calculate_movement(delta:float):
 #	print(is_on_floor())
 #	print(velocity)
 	if did_n_change(old_floor_normal, floor_normal):
-		if old_floor_normal.dot(Vector3.UP) > 0.75:
+		if (old_floor_normal.dot(Vector3.UP) > 0.75 and
+		velocity.dot(old_floor_normal) < velocity.dot(floor_normal)):
+#			velocity = velocity.slide(floor_normal)
 			velocity += 0.75 * speed * old_floor_normal
 #		print("floor normal changed @fr ", Network.physics_tick_id)
 
 #	print(get_floor_normal())
 #	print(is_on_wall())
-	print(get_slide_count())
+#	print(get_slide_count())
 	
 	if (move_slice[MOVE.JUMP]): 
 #	and ticks_since_on_floor < jump_grace_ticks and
@@ -318,7 +321,7 @@ func apply_movement():
 #			print("VEL: ", velocity, " RVEL: ", real_vel, " D: ", velocity.distance_squared_to(real_vel))
 #			print("bumping ", Network.physics_tick_id)
 #			print(real_vel)
-			velocity = velocity.linear_interpolate(real_vel, 0.5)
+			velocity = velocity.linear_interpolate(real_vel, 0.3)
 #		pre_move_origin = transform.origin
 #		print("pos-move vel: ", velocity)
 
