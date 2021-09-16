@@ -19,6 +19,8 @@ onready var camera:Camera = get_node(camera_path)
 onready var move_collider:CollisionShape = get_node(move_collider_path)
 onready var hurt_collider:CollisionShape = get_node(hurt_collider_path)
 
+onready var phys_fps = ProjectSettings.get_setting("physics/common/physics_fps")
+
 var slip_sphere:SphereShape
 
 # -------------------------------------------------------------Movement Settings
@@ -115,9 +117,10 @@ var floor_normal = Vector3.UP
 var fnh_lerp = 0.5
 var floor_snap = Vector3()
 var pre_move_origin = Vector3()
-var floor_limit = 0.5
+var floor_limit = 0.6
 var last_gravity_applied = Vector3()
 var n_delta_lim = 0.000001
+var ramp_transition = false
 func calculate_movement(delta:float):
 	"""
 		Todos
@@ -145,23 +148,41 @@ func calculate_movement(delta:float):
 	if is_on_floor():
 #		print("floored")
 		floor_normal = get_floor_normal()
-		floor_snap = floor_normal
 #		velocity -= speed * floor_normal
-		if floor_normal.dot(Vector3.UP) > floor_limit:
-#			print("flat")
-			last_gravity_applied = speed * floor_normal
-			velocity -= last_gravity_applied
-		else:
-#			print("corner")
-			last_gravity_applied = 0.1 * floor_normal
-			velocity -= last_gravity_applied
+#		velocity = velocity.slide(floor_normal)
+		last_gravity_applied = 2 * floor_normal
+#		if floor_normal.dot(Vector3.UP) > floor_limit:
+##			print("flat")
+#			last_gravity_applied = speed * floor_normal
+#			velocity -= last_gravity_applied
+#		else:
+##			print("corner")
+#			last_gravity_applied = 0.1 * floor_normal
+#			velocity -= last_gravity_applied
 		ticks_since_on_floor = 0
+		if did_n_change(old_floor_normal, floor_normal):
+			if (old_floor_normal.dot(Vector3.UP) > cos(PI / 4) and
+			velocity.dot(old_floor_normal) < velocity.dot(floor_normal)): # going over edge / hump
+				var vel_mag = velocity.length_squared()
+				if old_floor_normal.dot(Vector3.UP) < floor_normal.dot(Vector3.UP):
+#					print("flattening", Network.physics_tick_id)
+					velocity = velocity.slide(floor_normal)
+#					velocity *= sqrt(vel_mag / velocity.length_squared())
+				else:
+					velocity = velocity.linear_interpolate(velocity.slide(floor_normal), 0.9)
+#					velocity *= sqrt(vel_mag / velocity.length_squared())
+#					print("sharpening", Network.physics_tick_id)
+					pass
+#				velocity = velocity.slide(floor_normal) - 4 * floor_normal
+				
+				pass
+#			print("floor normal changed @fr ", Network.physics_tick_id)
 	else:
 #		print("air")
 		
-#		if ticks_since_on_floor == 0:
+		if ticks_since_on_floor == 0:
 #			velocity += last_gravity_applied.slide(floor_normal)
-#			velocity += last_gravity_applied
+			velocity += last_gravity_applied
 #			velocity = 0.5 * velocity.linear_interpolate(velocity.slide(floor_normal), 1)
 #			if floor_normal.dot(Vector3.UP) > floor_limit:
 #				velocity += speed * floor_normal
@@ -170,27 +191,24 @@ func calculate_movement(delta:float):
 #				velocity += speed * floor_normal
 #				velocity = velocity.linear_interpolate(velocity.slide(floor_normal), 1)
 		floor_normal = Vector3.UP
-		floor_snap = floor_normal
-		
-		velocity -= gravity * delta * floor_normal
+		last_gravity_applied = gravity * delta * floor_normal
 		ticks_since_on_floor += 1
+	velocity -= last_gravity_applied
 #	print(velocity.y)
 #	print(is_on_floor())
 #	print(velocity)
-	if did_n_change(old_floor_normal, floor_normal):
-		if (old_floor_normal.dot(Vector3.UP) > 0.75 and
-		velocity.dot(old_floor_normal) < velocity.dot(floor_normal)):
-#			velocity = velocity.slide(floor_normal)
-			velocity += 0.75 * speed * old_floor_normal
-#		print("floor normal changed @fr ", Network.physics_tick_id)
-
-#	print(get_floor_normal())
+	
+	
+#	print(get_floor_normal().dot(Vector3.UP))
+#	print(is_pushing_wall())
 #	print(is_on_wall())
+	print(is_on_ceiling())
 #	print(get_slide_count())
 	
 	if (move_slice[MOVE.JUMP]): 
 #	and ticks_since_on_floor < jump_grace_ticks and
 #	ticks_since_last_jump > jump_grace_ticks):
+		velocity += last_gravity_applied
 		velocity.y = jump_force
 #		gravity_component = jump_force * Vector3.UP
 		ticks_since_on_floor = jump_grace_ticks
@@ -231,6 +249,8 @@ var g_grnd := 10.0
 var g_edge := 0.1
 
 func calculate_movement_2(delta:float):
+#	h_vel = real_vel
+#	h_vel.y = 0
 	var target_hvel = speed * (
 			move_slice[MOVE.X_DIR] * transform.basis.x +
 			move_slice[MOVE.Z_DIR] * -transform.basis.z).normalized()
@@ -292,38 +312,165 @@ func calculate_movement_2(delta:float):
 	
 	velocity = h_vel + g_vel
 
+func calculate_movement_3(delta:float):
+	pre_move_origin = transform.origin
+	var target_velocity = (
+		speed * (
+			move_slice[MOVE.X_DIR] * transform.basis.x +
+			move_slice[MOVE.Z_DIR] * -transform.basis.z).normalized()
+		+ velocity.y * Vector3.UP)
+	
+	if ticks_since_on_floor > ticks_until_in_air:
+		velocity = velocity.linear_interpolate(
+			target_velocity, acceleration_in_air * delta)
+	else:
+		velocity = velocity.linear_interpolate(
+			target_velocity, acceleration * delta)
+	
+	var old_floor_normal = floor_normal
+	
+	if is_on_floor():
+#		print("floored")
+		floor_normal = get_floor_normal()
+		floor_snap = floor_normal
+		last_gravity_applied = floor_normal
+		velocity -= last_gravity_applied
+		ticks_since_on_floor = 0
+	else:
+		floor_normal = Vector3.UP
+		floor_snap = floor_normal
+		velocity -= gravity * delta * floor_normal
+		ticks_since_on_floor += 1
+	
+#	if did_n_change(old_floor_normal, floor_normal):
+#		if (old_floor_normal.dot(Vector3.UP) > 0.8 and
+#		velocity.dot(old_floor_normal) < velocity.dot(floor_normal)):
+#			print("compensating @tick ", Network.physics_tick_id)
+#			velocity = velocity.slide(floor_normal)
+#			velocity += 0.8 * last_gravity_applied
+#		print("floor normal changed @fr ", Network.physics_tick_id)
+	
+#	print(velocity.y)
+#	print(is_on_floor())
+#	print(velocity)
+#	print(get_floor_normal().y)
+#	print(is_pushing_wall())
+#	print(is_on_wall())
+#	print(get_slide_count())
+	
+	if (move_slice[MOVE.JUMP]): 
+		velocity.y = jump_force
+		ticks_since_on_floor = jump_grace_ticks
+		ticks_since_last_jump = 0
+	
+	ticks_since_last_jump += 1
+
+func calculate_movement_4(delta:float):
+	pre_move_origin = transform.origin
+	var target_velocity =  (
+		move_slice[MOVE.X_DIR] * transform.basis.x + 
+		move_slice[MOVE.Z_DIR] * -transform.basis.z).normalized()
+	
+	var old_floor_normal = floor_normal
+	
+	if is_on_floor():
+#		print("floored")
+		floor_normal = get_floor_normal()
+		last_gravity_applied = floor_normal
+		target_velocity = target_velocity * speed + velocity.y * Vector3.UP
+		velocity = velocity.linear_interpolate(
+			target_velocity, acceleration * delta)
+		
+		use_cl_norm = Vector3()
+		ticks_since_on_floor = 0
+	else:
+#		print("air")
+		floor_normal = Vector3.UP
+		last_gravity_applied = gravity * delta * floor_normal
+		target_velocity = (target_velocity.slide(floor_normal).normalized() * speed)
+		velocity = velocity.linear_interpolate(
+			target_velocity, acceleration_in_air * delta)
+		velocity -= last_gravity_applied
+		ticks_since_on_floor += 1
+		
+	
+#	if ticks_since_on_floor > ticks_until_in_air:
+#		velocity = velocity.linear_interpolate(
+#			target_velocity, acceleration_in_air * delta)
+#		velocity -= last_gravity_applied
+#	else:
+#		velocity = velocity.linear_interpolate(
+#			target_velocity, acceleration * delta)
+#		velocity -= last_gravity_applied
+		
+#	print(floor_normal)
+	
+	
+	if did_n_change(old_floor_normal, floor_normal):
+		if (old_floor_normal.dot(Vector3.UP) > 0.8 and
+		velocity.dot(old_floor_normal) < velocity.dot(floor_normal)):
+#			print("compensating @tick ", Network.physics_tick_id)
+#			velocity = velocity.slide(floor_normal)
+			velocity += 0.75 * last_gravity_applied
+#		print("floor normal changed @fr ", Network.physics_tick_id)
+	
+#	print(velocity)
+	
+	if (move_slice[MOVE.JUMP]): 
+		velocity.y = jump_force
+		ticks_since_on_floor = jump_grace_ticks
+		ticks_since_last_jump = 0
+	
+#	print(velocity.y)
+	
+	ticks_since_last_jump += 1
+	
+#	process_slides()
+
 var n_grnd_avg = Vector3()
 func process_slides():
 	n_grnd_avg = Vector3()
 	for idx in range(get_slide_count()):
 		var c_norm := get_slide_collision(idx).normal
+		print(c_norm)
 		if c_norm.dot(Vector3.UP) > cos(floor_limit):
 			n_grnd_avg += c_norm
 	
 	n_grnd_avg = n_grnd_avg.normalized()
 	
-	print(n_grnd_avg)
+#	print(n_grnd_avg)
 
 var inability_to_handle_sigma_male = 2.0
 
 var real_vel = Vector3()
+var use_cl_norm = Vector3()
 func apply_movement():
 #	print("pre-move vel: ", velocity)
+	var pre_vel = velocity
 	if not velocity.is_equal_approx(Vector3()):
 		var slid_vel = move_and_slide(velocity, Vector3.UP, false, 4)
-#		var slid_vel = move_and_slide_with_snap(velocity, floor_snap, Vector3.UP, false, 3)
+#		var slid_vel = move_and_slide_with_snap(
+#			velocity, 
+#			-floor_normal if ticks_since_last_jump < 0 else Vector3(), 
+#			Vector3.UP, false, 4)
 		velocity = slid_vel
 #		print("moved")
-		real_vel = 90 * (transform.origin - pre_move_origin)
-		real_vel.y = velocity.y
+		real_vel = phys_fps * (transform.origin - pre_move_origin)
+		real_vel.y = 0.5 * (real_vel.y + velocity.y)
 #		print(floor_normal.dot(Vector3.UP))
-		if (velocity.distance_squared_to(real_vel) > 0.1):
+		if (not velocity.is_equal_approx(real_vel)):
 #			print("VEL: ", velocity, " RVEL: ", real_vel, " D: ", velocity.distance_squared_to(real_vel))
 #			print("bumping ", Network.physics_tick_id)
 #			print(real_vel)
-			velocity = velocity.linear_interpolate(real_vel, 0.3)
+			velocity = velocity.linear_interpolate(real_vel, 0.75)
 #		pre_move_origin = transform.origin
 #		print("pos-move vel: ", velocity)
+#	else:
+#		velocity = Vector3()
+
+func apply_movement_2():
+	if not velocity.is_equal_approx(Vector3()):
+		velocity = move_and_slide(velocity, Vector3.UP, false, 4)
 
 func apply_movement_custom(delta):
 	var result := PhysicsTestMotionResult.new()
@@ -340,6 +487,23 @@ func apply_movement_custom(delta):
 	transform.origin += result.motion
 	if result.collision_normal:
 		velocity = result.motion_remainder.slide(result.collision_normal)
+
+func is_pushing_wall():
+	var space_state = get_world().direct_space_state
+	var hvel = velocity
+	hvel.y = 0
+	hvel = hvel.normalized() * 1.1
+	var result:Dictionary = space_state.intersect_ray(
+		transform.origin, 
+		transform.origin + hvel,
+		[self])
+	
+#	print(hvel)
+	
+#	if result:
+#		print(result.position)
+	
+	return not result.empty()
 
 func show_angle_change():
 	avg_yaw_delta = (
