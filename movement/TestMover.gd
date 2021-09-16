@@ -161,7 +161,7 @@ func calculate_movement(delta:float):
 #			velocity -= last_gravity_applied
 		ticks_since_on_floor = 0
 		if did_n_change(old_floor_normal, floor_normal):
-			if (old_floor_normal.dot(Vector3.UP) > cos(PI / 4) and
+			if (old_floor_normal.dot(Vector3.UP) >= cos(PI / 4) and
 			velocity.dot(old_floor_normal) < velocity.dot(floor_normal)): # going over edge / hump
 				var vel_mag = velocity.length_squared()
 				if old_floor_normal.dot(Vector3.UP) < floor_normal.dot(Vector3.UP):
@@ -169,7 +169,7 @@ func calculate_movement(delta:float):
 					velocity = velocity.slide(floor_normal)
 #					velocity *= sqrt(vel_mag / velocity.length_squared())
 				else:
-					velocity = velocity.linear_interpolate(velocity.slide(floor_normal), 0.9)
+#					velocity = velocity.linear_interpolate(velocity.slide(floor_normal), 1.0)
 #					velocity *= sqrt(vel_mag / velocity.length_squared())
 #					print("sharpening", Network.physics_tick_id)
 					pass
@@ -179,10 +179,17 @@ func calculate_movement(delta:float):
 #			print("floor normal changed @fr ", Network.physics_tick_id)
 	else:
 #		print("air")
-		
 		if ticks_since_on_floor == 0:
+			print(velocity.y - velocity.slide(floor_normal).y)
+			velocity.y = 0.8 * velocity.slide(floor_normal).y
 #			velocity += last_gravity_applied.slide(floor_normal)
-			velocity += last_gravity_applied
+#			var h_vel = Vector2(velocity.x, velocity.z)
+#			var h_norm = Vector2(floor_normal.x, floor_normal.z)
+#			print(h_vel.dot(h_norm))
+#			if h_vel.dot(h_norm) > 1:
+#				var fall_compensation = last_gravity_applied.y * Vector3.UP
+#				print(fall_compensation)
+#				velocity += fall_compensation
 #			velocity = 0.5 * velocity.linear_interpolate(velocity.slide(floor_normal), 1)
 #			if floor_normal.dot(Vector3.UP) > floor_limit:
 #				velocity += speed * floor_normal
@@ -202,7 +209,7 @@ func calculate_movement(delta:float):
 #	print(get_floor_normal().dot(Vector3.UP))
 #	print(is_pushing_wall())
 #	print(is_on_wall())
-	print(is_on_ceiling())
+#	print(is_on_ceiling())
 #	print(get_slide_count())
 	
 	if (move_slice[MOVE.JUMP]): 
