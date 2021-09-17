@@ -22,7 +22,7 @@ albedo_color = Color( 0.0745098, 0.784314, 0.717647, 1 )
 [node name="TestGamer" type="KinematicBody"]
 transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0 )
 collision_layer = 2
-collision/safe_margin = 0.016
+collision/safe_margin = 0.015
 script = ExtResource( 1 )
 visual_root_path = NodePath("VisualRoot")
 camera_path = NodePath("VisualRoot/Camera")

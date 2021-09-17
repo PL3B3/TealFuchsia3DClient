@@ -463,7 +463,7 @@ func apply_movement():
 		velocity = slid_vel
 #		print("moved")
 		real_vel = phys_fps * (transform.origin - pre_move_origin)
-		real_vel.y = 0.5 * (real_vel.y + velocity.y)
+		real_vel.y = (0.6 * real_vel.y + 0.4 * velocity.y)
 #		print(floor_normal.dot(Vector3.UP))
 		if (not velocity.is_equal_approx(real_vel)):
 #			print("VEL: ", velocity, " RVEL: ", real_vel, " D: ", velocity.distance_squared_to(real_vel))
