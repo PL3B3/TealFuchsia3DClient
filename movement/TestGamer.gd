@@ -106,7 +106,7 @@ func _unhandled_input(event):
 		var yaw_delta = -event.relative.x * mouse_sensitivity
 		var pitch_delta = event.relative.y * mouse_sensitivity
 		yaw += yaw_delta
-		yaw = deg_to_deg360(yaw)
+		yaw = Math.deg_to_deg360(yaw)
 		
 		rotation_degrees.y = yaw
 		orthonormalize()
@@ -149,7 +149,7 @@ func _physics_process(delta):
 
 	handle_networking()
 
-	calculate_movement(delta)
+	calculate_movement_4(delta)
 
 	apply_movement()
 	

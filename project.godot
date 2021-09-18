@@ -34,6 +34,11 @@ _global_script_classes=[ {
 "language": "GDScript",
 "path": "res://common/util/LagBuffer.gd"
 }, {
+"base": "Object",
+"class": "Math",
+"language": "GDScript",
+"path": "res://common/util/Math.gd"
+}, {
 "base": "KinematicBody",
 "class": "Mover",
 "language": "GDScript",
@@ -85,6 +90,7 @@ _global_script_class_icons={
 "InstrucBuffer": "",
 "Intersector": "",
 "LagBuffer": "",
+"Math": "",
 "Mover": "",
 "PacketManager": "",
 "PacketSerializer": "",
