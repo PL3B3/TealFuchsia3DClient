@@ -142,61 +142,31 @@ func calculate_movement(delta:float):
 			target_velocity, acceleration * delta)
 	
 	var old_floor_normal = floor_normal
-
 	
 	# get_dist_to_ground() < is_grounded_threshold
 	if is_on_floor():
 #		print("floored")
 		floor_normal = get_floor_normal()
-#		velocity -= speed * floor_normal
-#		velocity = velocity.slide(floor_normal)
 		last_gravity_applied = 2 * floor_normal
-#		if floor_normal.dot(Vector3.UP) > floor_limit:
-##			print("flat")
-#			last_gravity_applied = speed * floor_normal
-#			velocity -= last_gravity_applied
-#		else:
-##			print("corner")
-#			last_gravity_applied = 0.1 * floor_normal
-#			velocity -= last_gravity_applied
 		ticks_since_on_floor = 0
-		if did_n_change(old_floor_normal, floor_normal):
-			if (old_floor_normal.dot(Vector3.UP) >= cos(PI / 4) and
-			velocity.dot(old_floor_normal) < velocity.dot(floor_normal)): # going over edge / hump
-				var vel_mag = velocity.length_squared()
-				if old_floor_normal.dot(Vector3.UP) < floor_normal.dot(Vector3.UP):
-#					print("flattening", Network.physics_tick_id)
-					velocity = velocity.slide(floor_normal)
-#					velocity *= sqrt(vel_mag / velocity.length_squared())
-				else:
-#					velocity = velocity.linear_interpolate(velocity.slide(floor_normal), 1.0)
-#					velocity *= sqrt(vel_mag / velocity.length_squared())
-#					print("sharpening", Network.physics_tick_id)
-					pass
-#				velocity = velocity.slide(floor_normal) - 4 * floor_normal
-				
-				pass
-#			print("floor normal changed @fr ", Network.physics_tick_id)
+		velocity = velocity.slide(floor_normal)
+#		if (did_n_change(old_floor_normal, floor_normal) and
+#		old_floor_normal.dot(Vector3.UP) >= cos(PI / 4) and
+#		velocity.dot(old_floor_normal) < velocity.dot(floor_normal)): # going over edge / hump
+#			if old_floor_normal.dot(Vector3.UP) < floor_normal.dot(Vector3.UP):
+##				print("flattening", Network.physics_tick_id)
+#				velocity = velocity.slide(floor_normal)
+#			else:
+##				print("sharpening", Network.physics_tick_id)
+#				pass
+##			print("floor normal changed @fr ", Network.physics_tick_id)
+#			pass
+#		velocity.y = velocity.slide(floor_normal).y
 	else:
 #		print("air")
 		if ticks_since_on_floor == 0:
-			print(velocity.y - velocity.slide(floor_normal).y)
+#			print(velocity.y - velocity.slide(floor_normal).y)
 			velocity.y = 0.8 * velocity.slide(floor_normal).y
-#			velocity += last_gravity_applied.slide(floor_normal)
-#			var h_vel = Vector2(velocity.x, velocity.z)
-#			var h_norm = Vector2(floor_normal.x, floor_normal.z)
-#			print(h_vel.dot(h_norm))
-#			if h_vel.dot(h_norm) > 1:
-#				var fall_compensation = last_gravity_applied.y * Vector3.UP
-#				print(fall_compensation)
-#				velocity += fall_compensation
-#			velocity = 0.5 * velocity.linear_interpolate(velocity.slide(floor_normal), 1)
-#			if floor_normal.dot(Vector3.UP) > floor_limit:
-#				velocity += speed * floor_normal
-#				velocity = velocity.linear_interpolate(velocity.slide(floor_normal), 1)
-#			else:
-#				velocity += speed * floor_normal
-#				velocity = velocity.linear_interpolate(velocity.slide(floor_normal), 1)
 		floor_normal = Vector3.UP
 		last_gravity_applied = gravity * delta * floor_normal
 		ticks_since_on_floor += 1
@@ -204,17 +174,15 @@ func calculate_movement(delta:float):
 #	print(velocity.y)
 #	print(is_on_floor())
 #	print(velocity)
-	
-	
 #	print(get_floor_normal().dot(Vector3.UP))
 #	print(is_pushing_wall())
 #	print(is_on_wall())
 #	print(is_on_ceiling())
 #	print(get_slide_count())
 	
-	if (move_slice[MOVE.JUMP]): 
-#	and ticks_since_on_floor < jump_grace_ticks and
-#	ticks_since_last_jump > jump_grace_ticks):
+	if (move_slice[MOVE.JUMP] 
+	and ticks_since_on_floor < jump_grace_ticks 
+	and ticks_since_last_jump > jump_grace_ticks):
 		velocity += last_gravity_applied
 		velocity.y = jump_force
 #		gravity_component = jump_force * Vector3.UP
@@ -458,18 +426,18 @@ func apply_movement():
 		var slid_vel = move_and_slide(velocity, Vector3.UP, false, 4)
 #		var slid_vel = move_and_slide_with_snap(
 #			velocity, 
-#			-floor_normal if ticks_since_last_jump < 0 else Vector3(), 
+#			Vector3.DOWN if ticks_since_last_jump < 0 else Vector3(), 
 #			Vector3.UP, false, 4)
 		velocity = slid_vel
 #		print("moved")
 		real_vel = phys_fps * (transform.origin - pre_move_origin)
-		real_vel.y = (0.6 * real_vel.y + 0.4 * velocity.y)
+		real_vel.y = (0.4 * real_vel.y + 0.6 * velocity.y)
 #		print(floor_normal.dot(Vector3.UP))
 		if (not velocity.is_equal_approx(real_vel)):
 #			print("VEL: ", velocity, " RVEL: ", real_vel, " D: ", velocity.distance_squared_to(real_vel))
 #			print("bumping ", Network.physics_tick_id)
 #			print(real_vel)
-			velocity = velocity.linear_interpolate(real_vel, 0.75)
+			velocity = velocity.linear_interpolate(real_vel, 0.85)
 #		pre_move_origin = transform.origin
 #		print("pos-move vel: ", velocity)
 #	else:
@@ -479,6 +447,7 @@ func apply_movement_2():
 	if not velocity.is_equal_approx(Vector3()):
 		velocity = move_and_slide(velocity, Vector3.UP, false, 4)
 
+"""
 func apply_movement_custom(delta):
 	var result := PhysicsTestMotionResult.new()
 	
@@ -494,6 +463,7 @@ func apply_movement_custom(delta):
 	transform.origin += result.motion
 	if result.collision_normal:
 		velocity = result.motion_remainder.slide(result.collision_normal)
+"""
 
 func is_pushing_wall():
 	var space_state = get_world().direct_space_state

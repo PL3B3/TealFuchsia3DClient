@@ -216,7 +216,7 @@ func test_slide():
 #	print(is_on_floor())
 #	move_and_slide(Vector3(0.0, -100.0, 0.0), Vector3.UP)
 #	print(is_on_floor())
-	for i in range(20):
+	for i in range(100):
 		move_and_slide(pow(-1, i) * Vector3(20.0, -20.0, 0.0), Vector3.UP, false, 2)
 
 func record_move():
