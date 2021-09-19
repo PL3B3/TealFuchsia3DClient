@@ -24,8 +24,8 @@ onready var phys_fps = ProjectSettings.get_setting("physics/common/physics_fps")
 var slip_sphere:SphereShape
 
 # -------------------------------------------------------------Movement Settings
-var jump_height := 2.5
-var jump_duration := 0.4
+var jump_height := 2.75
+var jump_duration := 0.42
 
 var jump_grace_ticks := 10
 var jump_try_ticks := 4
@@ -38,7 +38,7 @@ var speed := 8
 var speed_limit := 35.5
 var h_speed_limit_sqr := pow(speed_limit, 2)
 var speed_zero_limit := 0.0005 # if speed^2 falls below this, set it to 0
-var acceleration := 12.0
+var acceleration := 10.0
 var acceleration_in_air := 2.0
 
 var is_grounded_threshold := 0.04
@@ -349,11 +349,22 @@ func calculate_movement_4(delta:float):
 	
 	var old_floor_normal = floor_normal
 	
+	
 	if is_on_floor():
 #		print("floored")
 		floor_normal = get_floor_normal()
 		last_gravity_applied = 2 * floor_normal
-		target_velocity = target_velocity * speed * floor_normal.y
+		
+		var vel_n = velocity.dot(floor_normal)
+#		velocity = velocity.slide(floor_normal)
+#		print(floor_normal.dot(Vector3.UP) > 0.85)
+#		print(vel_n - velocity.dot(old_floor_normal) > 0.1)
+		var is_n_change_big = vel_n - velocity.dot(old_floor_normal) > 0.05
+		var is_on_flat = floor_normal.dot(Vector3.UP) > 0.85
+#		if (vel_n > 0.04 and is_n_change_big):
+#			velocity *= 0.9
+#			print("Normal Changing @", Network.physics_tick_id)
+		
 		"""
 			On slopes, we want absolute horizontal velocity x,z to match with
 			our character's rotation. simply projecting onto the plane will not
@@ -361,14 +372,30 @@ func calculate_movement_4(delta:float):
 		"""
 		target_velocity = Math.project_onto_plane_along_axis(target_velocity, 
 			floor_normal, 1)
-#		if target_velocity.length_squared():
-#			target_velocity *= sqrt(speed * speed / (target_velocity.length_squared()))
+		target_velocity = target_velocity.normalized() * speed
 		velocity = velocity.linear_interpolate(
 			target_velocity, acceleration * delta)
-#		print(velocity.length())
-		
+		velocity = velocity.slide(floor_normal)
+#		print(velocity)
+
 		velocity -= last_gravity_applied
+		
 		ticks_since_on_floor = 0
+		# is_n_change_big=true when going over edges
+		# the vel_n>0.04 checks if moving fast in direction of edge normal
+		if is_n_change_big and vel_n > 0.04:
+			var space_state = get_world().direct_space_state
+			var target_foot_origin = (
+				transform.origin + 
+				velocity * 0.1 - 
+				floor_normal * character_feet_offset)
+			var result = space_state.intersect_ray(
+				target_foot_origin, 
+				target_foot_origin + Vector3.DOWN)
+			if result.empty():
+				print("falling off", Network.physics_tick_id)
+				velocity += last_gravity_applied
+				velocity.y *= 0.4
 	else:
 #		print("air")
 		floor_normal = Vector3.UP
@@ -378,23 +405,14 @@ func calculate_movement_4(delta:float):
 			target_velocity, acceleration_in_air * delta)
 		velocity -= last_gravity_applied
 		ticks_since_on_floor += 1
-		
 	
-#	if ticks_since_on_floor > ticks_until_in_air:
-#		velocity = velocity.linear_interpolate(
-#			target_velocity, acceleration_in_air * delta)
-#		velocity -= last_gravity_applied
-#	else:
-#		velocity = velocity.linear_interpolate(
-#			target_velocity, acceleration * delta)
-#		velocity -= last_gravity_applied
-	
-	if (move_slice[MOVE.JUMP]): 
+	if (move_slice[MOVE.JUMP]):
 		velocity.y = jump_force
 		ticks_since_on_floor = jump_grace_ticks
 		ticks_since_last_jump = 0
 	
 #	print(velocity.y)
+#	print(is_on_floor())
 	
 	ticks_since_last_jump += 1
 	
@@ -429,13 +447,13 @@ func apply_movement():
 		velocity = slid_vel
 #		print("moved")
 		real_vel = phys_fps * (transform.origin - pre_move_origin)
-		real_vel.y = (0.5 * real_vel.y + 0.5 * velocity.y)
+		real_vel.y = (0.4 * real_vel.y + 0.6 * velocity.y)
 #		print(floor_normal.dot(Vector3.UP))
 		if (not velocity.is_equal_approx(real_vel)):
 #			print("VEL: ", velocity, " RVEL: ", real_vel, " D: ", velocity.distance_squared_to(real_vel))
 #			print("bumping ", Network.physics_tick_id)
 #			print(real_vel)
-			velocity = velocity.linear_interpolate(real_vel, 1.0)
+			velocity = velocity.linear_interpolate(real_vel, 0.85)
 #		pre_move_origin = transform.origin
 #		print("pos-move vel: ", velocity)
 #	else:

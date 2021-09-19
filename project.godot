@@ -171,6 +171,7 @@ ultimate_ability={
 
 [physics]
 
+common/physics_fps=75
 common/physics_jitter_fix=0.0
 3d/physics_engine="GodotPhysics"
 3d/active_soft_world=false
