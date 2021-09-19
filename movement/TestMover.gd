@@ -35,9 +35,9 @@ var ticks_until_in_air := 5
 var gravity := (2.0 * jump_height) / (pow(jump_duration, 2))
 var jump_force := gravity * jump_duration
 var speed := 8
-var speed_limit := 35.5
-var h_speed_limit_sqr := pow(speed_limit, 2)
-var speed_zero_limit := 0.0005 # if speed^2 falls below this, set it to 0
+var speed_lim := 35.5
+var h_speed_lim_sqr := pow(speed_lim, 2)
+var speed_zero_lim := 0.0005 # if speed^2 falls below this, set it to 0
 var acceleration := 10.0
 var acceleration_in_air := 2.0
 
@@ -45,6 +45,8 @@ var is_grounded_threshold := 0.04
 var ground_snap_threshold := 0.0
 var slip_radius := 1.0
 var character_feet_offset := 1.0 # how far below character origin is its feet?
+
+var edge_speed_lim = 0.05
 
 # -----------------------------------------------------------------Movement Vars
 var yaw := 0.0
@@ -117,7 +119,7 @@ var floor_normal = Vector3.UP
 var fnh_lerp = 0.5
 var floor_snap = Vector3()
 var pre_move_origin = Vector3()
-var floor_limit = 0.6
+var floor_lim = 0.6
 var last_gravity_applied = Vector3()
 var n_delta_lim = 0.000001
 var ramp_transition = false
@@ -196,13 +198,13 @@ func calculate_movement(delta:float):
 	
 	"""
 		var vel_h_mag_sqr = pow(velocity.x, 2) + pow(velocity.z, 2)
-		if vel_h_mag_sqr > h_speed_limit_sqr:
-			var h_scale_fac = sqrt(h_speed_limit_sqr / vel_h_mag_sqr)
+		if vel_h_mag_sqr > h_speed_lim_sqr:
+			var h_scale_fac = sqrt(h_speed_lim_sqr / vel_h_mag_sqr)
 			velocity.x *= h_scale_fac
 			velocity.z *= h_scale_fac
 
 		var vel_mag_sqr = vel_h_mag_sqr + pow(velocity.y, 2)
-		if vel_mag_sqr < speed_zero_limit and ticks_since_on_floor == 0:
+		if vel_mag_sqr < speed_zero_lim and ticks_since_on_floor == 0:
 			velocity = Vector3()
 
 		velocity += floor_snap
@@ -245,7 +247,7 @@ func calculate_movement_2(delta:float):
 		floor_normal = get_floor_normal()
 		floor_snap = floor_normal
 #		velocity -= speed * floor_normal
-		if floor_normal.dot(Vector3.UP) > floor_limit:
+		if floor_normal.dot(Vector3.UP) > floor_lim:
 #			print("flat")
 			g_vel = g_vel.linear_interpolate(
 				-g_grnd * floor_normal, acceleration * delta)
@@ -349,21 +351,13 @@ func calculate_movement_4(delta:float):
 	
 	var old_floor_normal = floor_normal
 	
-	
 	if is_on_floor():
 #		print("floored")
 		floor_normal = get_floor_normal()
 		last_gravity_applied = 2 * floor_normal
 		
 		var vel_n = velocity.dot(floor_normal)
-#		velocity = velocity.slide(floor_normal)
-#		print(floor_normal.dot(Vector3.UP) > 0.85)
-#		print(vel_n - velocity.dot(old_floor_normal) > 0.1)
 		var is_n_change_big = vel_n - velocity.dot(old_floor_normal) > 0.05
-#		var is_on_flat = floor_normal.dot(Vector3.UP) > 0.85
-#		if (vel_n > 0.04 and is_n_change_big):
-#			velocity *= 0.9
-#			print("Normal Changing @", Network.physics_tick_id)
 		
 		"""
 			On slopes, we want absolute horizontal velocity x,z to match with
@@ -376,26 +370,20 @@ func calculate_movement_4(delta:float):
 		velocity = velocity.linear_interpolate(
 			target_velocity, acceleration * delta)
 		velocity = velocity.slide(floor_normal)
-#		print(velocity)
-
+	
 		velocity -= last_gravity_applied
 		
 		ticks_since_on_floor = 0
-		# is_n_change_big=true when going over edges
-		# the vel_n>0.04 checks if moving fast in direction of edge normal
-		if is_n_change_big and vel_n > 0.04:
-			var space_state = get_world().direct_space_state
-			var target_foot_origin = (
-				transform.origin + 
-				velocity * 0.1 - 
-				floor_normal * character_feet_offset)
-			var result = space_state.intersect_ray(
-				target_foot_origin, 
-				target_foot_origin + Vector3.DOWN)
-			if result.empty():
-#				print("falling off", Network.physics_tick_id)
+		
+		"""
+			is_n_change_big=true when going over edges
+			the vel_n cond checks if moving fast in direction of edge normal
+		"""
+		if is_n_change_big and vel_n > edge_speed_lim:
+			if check_falling():
 				velocity += last_gravity_applied
-				velocity.y *= 0.4
+				velocity.y *= 0.35
+
 	else:
 #		print("air")
 		floor_normal = Vector3.UP
@@ -406,7 +394,10 @@ func calculate_movement_4(delta:float):
 		velocity -= last_gravity_applied
 		ticks_since_on_floor += 1
 	
-	if (move_slice[MOVE.JUMP]):
+	if (move_slice[MOVE.JUMP] 
+	and ticks_since_on_floor < jump_grace_ticks 
+	and ticks_since_last_jump > jump_grace_ticks):
+		velocity += last_gravity_applied # ensures jump is straight up
 		velocity.y = jump_force
 		ticks_since_on_floor = jump_grace_ticks
 		ticks_since_last_jump = 0
@@ -416,8 +407,18 @@ func calculate_movement_4(delta:float):
 #	print(floor_normal)
 	
 	ticks_since_last_jump += 1
-	
-#	process_slides()
+
+func check_falling():
+	var space_state = get_world().direct_space_state
+	var target_foot_origin = (
+		transform.origin + 
+		velocity * 0.1 - 
+		floor_normal * character_feet_offset)
+	var result = space_state.intersect_ray(
+		target_foot_origin, 
+		target_foot_origin + Vector3.DOWN)
+	return result.empty()
+
 
 var n_grnd_avg = Vector3()
 func process_slides():
@@ -425,7 +426,7 @@ func process_slides():
 	for idx in range(get_slide_count()):
 		var c_norm := get_slide_collision(idx).normal
 		print(c_norm)
-		if c_norm.dot(Vector3.UP) > cos(floor_limit):
+		if c_norm.dot(Vector3.UP) > cos(floor_lim):
 			n_grnd_avg += c_norm
 	
 	n_grnd_avg = n_grnd_avg.normalized()

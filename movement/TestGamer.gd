@@ -13,10 +13,9 @@ enum STATE {
 	ULT_CHARGE}
 
 # ----------------------------------------------------------------Gamer settings
-var base_health := 100 # limit to how much healing items can heal you
-var meat_health := 150 # highest persistent health
-var over_health := 200 # decays to meat_health
-var buff_decay_rate := 5 # amount buff to decay every 0.5 seconds
+var low_health := 50 # self-regen stops
+var mid_health := 100 # health packs stop
+var max_health := 150 # regulators stop
 
 var recharge_rate := 6 # after this many ticks, we decrease the "time" left by 1
 var fast_recharge_time := 85
@@ -65,7 +64,7 @@ func init_state_recording():
 	state_slice.resize(STATE.size())
 	state_slice[STATE.POSITION] = transform.origin
 	state_slice[STATE.VELOCITY] = Vector3()
-	state_slice[STATE.HEALTH] = base_health
+	state_slice[STATE.HEALTH] = mid_health
 	state_slice[STATE.ULT_CHARGE] = 0
 	state_slice[STATE.SLOW_CHARGE_TIME_LEFT] = 0
 	state_slice[STATE.FAST_CHARGE_TIME_LEFT] = 0
