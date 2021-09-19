@@ -360,7 +360,7 @@ func calculate_movement_4(delta:float):
 #		print(floor_normal.dot(Vector3.UP) > 0.85)
 #		print(vel_n - velocity.dot(old_floor_normal) > 0.1)
 		var is_n_change_big = vel_n - velocity.dot(old_floor_normal) > 0.05
-		var is_on_flat = floor_normal.dot(Vector3.UP) > 0.85
+#		var is_on_flat = floor_normal.dot(Vector3.UP) > 0.85
 #		if (vel_n > 0.04 and is_n_change_big):
 #			velocity *= 0.9
 #			print("Normal Changing @", Network.physics_tick_id)
@@ -393,7 +393,7 @@ func calculate_movement_4(delta:float):
 				target_foot_origin, 
 				target_foot_origin + Vector3.DOWN)
 			if result.empty():
-				print("falling off", Network.physics_tick_id)
+#				print("falling off", Network.physics_tick_id)
 				velocity += last_gravity_applied
 				velocity.y *= 0.4
 	else:
@@ -413,6 +413,7 @@ func calculate_movement_4(delta:float):
 	
 #	print(velocity.y)
 #	print(is_on_floor())
+#	print(floor_normal)
 	
 	ticks_since_last_jump += 1
 	
