@@ -33,7 +33,7 @@ var slow_recharge_ticks_left := 0 # set=recharge_rate on ability press
 
 # ----------------------------------------------------------------Input settings
 var mouse_sensitivity := 0.05
-var jump_try_ticks_default := 3
+var jump_try_ticks_default := 7
 
 # --------------------------------------------------------------------Input vars
 var jump_try_ticks_remaining := 0
@@ -164,6 +164,7 @@ var frames_since_cast = 0
 
 func handle_raycast():
 	if raycast_this_physics_frame:
+		velocity += 30.0 * -camera.get_global_transform().basis.z
 #		velocity.y = 0
 #		for i in range(20):
 #			move_and_slide(20.0 * -camera.get_global_transform().basis.z, Vector3.UP, false, 2)
@@ -179,17 +180,17 @@ func handle_raycast():
 #		frames_since_cast += 1
 #		if result and is_instance_valid(result.collider):
 #			print(result.collider)
-		var hit_dist
-		for i in range(1):
-			hit_dist = Intersector.intersect_ray_sphere(
-				camera.get_global_transform().origin, 
-				camera.get_global_transform().origin + (40.0 * -camera.get_global_transform().basis.z),
-				Network.sigma_position,
-				1)
-		if hit_dist == -1.0:
-			print("missed aha")
-		else:
-			print("sigma destroyed")
+#		var hit_dist
+#		for i in range(1):
+#			hit_dist = Intersector.intersect_ray_sphere(
+#				camera.get_global_transform().origin, 
+#				camera.get_global_transform().origin + (40.0 * -camera.get_global_transform().basis.z),
+#				Network.sigma_position,
+#				1)
+#		if hit_dist == -1.0:
+#			print("missed aha")
+#		else:
+#			print("sigma destroyed")
 		raycast_this_physics_frame = false
 		# for i in range(targets.size()):
 		# 	var target_to_shoot = targets[i]

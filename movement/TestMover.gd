@@ -24,8 +24,11 @@ onready var phys_fps = ProjectSettings.get_setting("physics/common/physics_fps")
 var slip_sphere:SphereShape
 
 # -------------------------------------------------------------Movement Settings
-var jump_height := 2.75
-var jump_duration := 0.42
+export var jump_height := 2.75
+export var jump_duration := 0.42
+export var speed := 8.0
+export var acceleration := 10.0
+export var acceleration_in_air := 2.0
 
 var jump_grace_ticks := 10
 var jump_try_ticks := 4
@@ -34,12 +37,10 @@ var ticks_until_in_air := 5
 
 var gravity := (2.0 * jump_height) / (pow(jump_duration, 2))
 var jump_force := gravity * jump_duration
-var speed := 8
 var speed_lim := 35.5
 var h_speed_lim_sqr := pow(speed_lim, 2)
 var speed_zero_lim := 0.0005 # if speed^2 falls below this, set it to 0
-var acceleration := 10.0
-var acceleration_in_air := 2.0
+
 
 var is_grounded_threshold := 0.04
 var ground_snap_threshold := 0.0
@@ -47,6 +48,7 @@ var slip_radius := 1.0
 var character_feet_offset := 1.0 # how far below character origin is its feet?
 
 var edge_speed_lim = 0.05
+var edge_delta_lim = 0.05
 
 # -----------------------------------------------------------------Movement Vars
 var yaw := 0.0
@@ -357,7 +359,8 @@ func calculate_movement_4(delta:float):
 		last_gravity_applied = 2 * floor_normal
 		
 		var vel_n = velocity.dot(floor_normal)
-		var is_n_change_big = vel_n - velocity.dot(old_floor_normal) > 0.05
+		var is_n_change_big = (vel_n - velocity.dot(old_floor_normal) > 
+			edge_delta_lim)
 		
 		"""
 			On slopes, we want absolute horizontal velocity x,z to match with
@@ -371,7 +374,10 @@ func calculate_movement_4(delta:float):
 			target_velocity, acceleration * delta)
 		velocity = velocity.slide(floor_normal)
 	
-		velocity -= last_gravity_applied
+		if velocity.length_squared() > 0.001:
+			velocity -= last_gravity_applied
+		else:
+			velocity -= 0.1 * last_gravity_applied
 		
 		ticks_since_on_floor = 0
 		
@@ -383,7 +389,6 @@ func calculate_movement_4(delta:float):
 			if check_falling():
 				velocity += last_gravity_applied
 				velocity.y *= 0.35
-
 	else:
 #		print("air")
 		floor_normal = Vector3.UP
